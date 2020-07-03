@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+<script type="text/javascript">
+	var websocket = new WebSocket("ws://localhost:8080/myHandler",["token12"]);
+	
+	websocket.onopen = function(evt) {
+	};
+	
+	websocket.onclose = function(evt) {
+	};
+	
+	websocket.onmessage = function(evt) {
+	};
+	
+	websocket.onerror = function(evt) {
+	};
+	
+	function sendMessage(text){
+		websocket.send(document.getElementById("output").value);
+		document.getElementById("output").value = "";
+	}
+	
+</script>
+
+</head>
+<body>
+	<textarea rows="5" cols="20" id="output"></textarea>
+	<br/>
+	<button onclick="sendMessage();">sendMessage</button>
+</body>
+</html>
