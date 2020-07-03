@@ -36,32 +36,39 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  */
 @Configuration
 @EnableWebSocketMessageBroker
-@ConditionalOnProperty(name = "stomp.broker", havingValue = "spring", matchIfMissing = true)
-public class WebSocketMessageBrokerConfig implements WebSocketMessageBrokerConfigurer {
+@ConditionalOnProperty(name = "stomp.broker", havingValue = "rabbitmq", matchIfMissing = false)
+public class WebSocketRabbitmqMessageBrokerConfig implements WebSocketMessageBrokerConfigurer {
 
-	private final Logger logger = LoggerFactory.getLogger(WebSocketMessageBrokerConfig.class);
+	private final Logger logger = LoggerFactory.getLogger(WebSocketRabbitmqMessageBrokerConfig.class);
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry config) {
-		/**
-		 * 使用springboot内置的基于内存的Stomp broker,<br>
-		 * 也可使用第三方的Stomp broker，如ActiveMQ、RabbitMQ等
-		 * <p>
-		 * 该broker只会处理目的地前缀为/topic和/queue的消息
-		 */
-		config.enableSimpleBroker("/topic", "/queue");
+		// @formatter:off
+		
+		// 使用rabbitmq作为StompBroker
+		config.enableStompBrokerRelay("/topic", "/queue")
+        .setRelayHost("docker01")       // rabbitmq-host服务器地址
+        .setRelayPort(61613)            // rabbitmq-stomp 服务器服务端口
+        .setClientLogin("guest")        // 登陆账户
+        .setClientPasscode("guest")     // 登陆密码
+        .setUserDestinationBroadcast("/topic/unresolved-user-destination")
+        .setUserRegistryBroadcast("/topic/simp-user-registry");   
+		
 		/**
 		 * 设置应用目的地前缀，过滤并处理stompClient.send命令
 		 * <p>
 		 * 例如：stompClient.send("/app/*")时，会转发到<code>@MessageMapping</code>注解的方法
 		 */
 		config.setApplicationDestinationPrefixes("/app");
+		
 		/**
 		 * 设置用户目的地前缀
 		 * <p>
 		 * 例如：stompClient.subscribe('/user/queue/greeting')时，
 		 */
 		config.setUserDestinationPrefix("/user");
+		
+		// @formatter:on
 	}
 
 	@Override
@@ -74,15 +81,14 @@ public class WebSocketMessageBrokerConfig implements WebSocketMessageBrokerConfi
 		registration.interceptors(new ChannelInterceptor() {
 			@Override
 			public Message<?> preSend(Message<?> message, MessageChannel channel) {
+				logger.info("preSend message is {}", message);
 				StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-				logger.info("Stomp Command is {}", accessor.getCommand());
 				if (StompCommand.CONNECT.equals(accessor.getCommand())) {
 					// TODO 这里监听了CONNECT命令，可以从header中获取用户鉴权信息进行鉴权操作
 					final String username = accessor.getNativeHeader("username").get(0);
 					logger.info("User '{}' connected!", username);
 					// 为websocket连接绑定登录用户信息
-					// Spring will note and save the authenticated user and associate it with
-					// subsequent STOMP messages on the same session:
+					// Spring will note and save the authenticated user and associate it with subsequent STOMP messages on the same session:
 					accessor.setUser(new Principal() {
 						@Override
 						public String getName() {

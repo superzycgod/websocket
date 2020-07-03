@@ -16,7 +16,7 @@ function connect() {
 	stompClient = Stomp.over(socket);
 	stompClient.connect({
 		// headers
-		username : "zhangsan"
+		username : $("#username").val()
 	}, function(frame) {
 		setConnected(true);
 		console.log('Connected: ' + frame);
