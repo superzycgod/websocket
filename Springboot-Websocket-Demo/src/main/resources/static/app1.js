@@ -20,14 +20,14 @@ function connect() {
 	}, function(frame) {
 		setConnected(true);
 		console.log('Connected: ' + frame);
-		
+
 		// 订阅主题目的地(destination) -> /topic/greeting
 		stompClient.subscribe('/topic/greeting', function(greeting) {
 			showGreeting(JSON.parse(greeting.body).content);
 		});
-		
+
 		// 订阅只有当前用户能收到的消息
-		stompClient.subscribe('/user/queue/greeting', function(greeting) {
+		stompClient.subscribe('/queue/greeting-' + $("#username").val(), function(greeting) {
 			showGreeting(JSON.parse(greeting.body).content);
 		});
 
@@ -49,7 +49,7 @@ function sendTopic() {
 }
 
 function sendQueue() {
-	stompClient.send("/app/queue/hello", {}, JSON.stringify({
+	stompClient.send("/app/queue/hello/user", {}, JSON.stringify({
 		'name' : $("#name").val()
 	}));
 }
@@ -68,10 +68,10 @@ $(function() {
 	$("#disconnect").click(function() {
 		disconnect();
 	});
-	$("#send").click(function() {
+	$("#send2Topic").click(function() {
 		sendTopic();
 	});
-	$("#sendSomeone").click(function() {
+	$("#send2User").click(function() {
 		sendQueue();
 	});
 });

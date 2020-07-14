@@ -54,6 +54,7 @@ public class WebSocketRabbitmqMessageBrokerConfig implements WebSocketMessageBro
         .setUserDestinationBroadcast("/topic/unresolved-user-destination")
         .setUserRegistryBroadcast("/topic/simp-user-registry");   
 		
+		
 		/**
 		 * 设置应用目的地前缀，过滤并处理stompClient.send命令
 		 * <p>
@@ -64,7 +65,11 @@ public class WebSocketRabbitmqMessageBrokerConfig implements WebSocketMessageBro
 		/**
 		 * 设置用户目的地前缀
 		 * <p>
-		 * 例如：stompClient.subscribe('/user/queue/greeting')时，
+		 * 例如：客户端通过stompClient.subscribe('/user/queue/greeting')时，
+		 * Spring会内部通过UserDestinationResolver接口实现类，
+		 * 将目的地修改为'/queue/greeting-user' + websocketSessionid，
+		 * 向StompBroker（rabbitmq）发送subscribe命令
+		 * 
 		 */
 		config.setUserDestinationPrefix("/user");
 		
@@ -81,20 +86,25 @@ public class WebSocketRabbitmqMessageBrokerConfig implements WebSocketMessageBro
 		registration.interceptors(new ChannelInterceptor() {
 			@Override
 			public Message<?> preSend(Message<?> message, MessageChannel channel) {
-				logger.info("preSend message is {}", message);
 				StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 				if (StompCommand.CONNECT.equals(accessor.getCommand())) {
 					// TODO 这里监听了CONNECT命令，可以从header中获取用户鉴权信息进行鉴权操作
 					final String username = accessor.getNativeHeader("username").get(0);
 					logger.info("User '{}' connected!", username);
 					// 为websocket连接绑定登录用户信息
-					// Spring will note and save the authenticated user and associate it with subsequent STOMP messages on the same session:
+					// Spring will note and save the authenticated user and associate it with
+					// subsequent STOMP messages on the same session:
 					accessor.setUser(new Principal() {
 						@Override
 						public String getName() {
 							return (String) username;
 						}
 					});
+				} else if (StompCommand.SEND.equals(accessor.getCommand())) {
+					// accessor.setHeader("persistent", "true");
+					logger.info("Set Header persistent:true");
+				} else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+
 				}
 				return message;
 			}
